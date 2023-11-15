@@ -44,6 +44,9 @@ typedef struct _MOTH_EXEC_IMPORTTABLE* PMOTH_EXEC_IMPORTTABLE;
 typedef struct _MOTH_EXEC_EXPORTTABLE* PMOTH_EXEC_EXPORTTABLE;
 typedef struct _MOTH_EXEC_DEBUGTABLE* PMOTH_EXEC_DEBUGTABLE;
 typedef struct _MOTH_EXEC_SECTION* PMOTH_EXEC_SECTION;
+typedef struct _MOTH_EXEC_DIRECTORY* PMOTH_EXEC_DIRECTORY;
+typedef struct _MOTH_EXEC_CERTIFICATE* PMOTH_EXEC_CERTIFICATE;
+typedef struct _MOTH_EXEC_DEBUGENTRY* PMOTH_EXEC_DEBUGENTRY;
 typedef struct _USER_PROCESS* PUSER_PROCESS;
 typedef struct _USER_SESSION* PUSER_SESSION;
 typedef struct _USER_THREAD* PUSER_THREAD;
@@ -108,40 +111,125 @@ typedef struct _SCHEDULE_SYSTEM_EVENT { // Scheduler Kernel Event
 
 // External Executable File Header Structures
 
+#define MOTHDIR_IMPORTS  0x00
+#define MOTHDIR_EXPORTS  0x01
+#define MOTHDIR_DEBUG    0x02
+#define MOTHDIR_CODESIGN 0x03
+#define MOTHDIR_SECTIONS 0x04
+#define MOTHDIR_XTENSION 0x05
+
+typedef struct _MOTH_EXEC_DIRECTORY { // Executable Directory Structure
+	WORD64 VirtualAddress;
+	WORD64 Size;
+}MOTH_EXEC_DIRECTORY, *PMOTH_EXEC_DIRECTORY;
+
 typedef struct _MOTH_EXEC_HEADER { // Executable Header
+	// Critical Information
 	WORD16 Magic;
-
-	PMOTH_EXEC_IMPORTTABLE ImportTable;
-	PMOTH_EXEC_EXPORTTABLE ExportTable;
-	PMOTH_EXEC_DEBUGTABLE  DebugInformation;
-	PMOTH_EXEC_SECTION     SectionTable;
-	WORD32 ImportTableEntries;
-	WORD32 ExportTableEntries;
-	WORD32 SectionTableEntries;
-
+	MOTH_EXEC_DIRECTORY DataDirectories[16];
+	
+	// Executible Loader Information
 	WORD64 BaseAddress;
 	WORD64 SizeOfCode;
 	WORD64 EntryPoint;
+
+	// Executible Attributes
+	BYTE ExecutibleType;
+	WORD64 CompileTime;
+	CHAR CompilerMark[32];
+	WORD64 MinimumKernelVersion;
+	WORD64 MinimumUserVersion;
+	WORD64 Checksum;
+	WORD64 MinimumRequiredAllocation;
+	WORD64 MaximumLikelyAllocation;
 }MOTH_EXEC_HEADER, *PMOTH_EXEC_HEADER;
 
 typedef struct _MOTH_EXEC_IMPORTTABLE { // Executable Import Table
 	CHAR ModuleName[32];
 	CHAR ImportName[48];
 
-
+	WORD64 LoaderCallValue; // Random number indicating an assignment is required.
+	WORD64 ReferenceCount;
+	
+	struct {
+		union {
+			WORD64 Values[4];
+			struct {
+				WORD64 ResolvedValue;
+				WORD64 ReferencesFound;
+				WORD64 ModuleBaseAddress;
+				WORD64 ModuleHandle;
+			};
+		};
+	}RuntimeUseOnly;
 }MOTH_EXEC_IMPORTTABLE, *PMOTH_EXEC_IMPORTTABLE;
 
 typedef struct _MOTH_EXEC_EXPORTTABLE { // Executable Export Table
-	WORD64 Reserved;
+	CHAR ExportName[48];
+
+	WORD64 AbsoluteAddress;
+	WORD64 RelativeToBase;
+
+	struct {
+		union {
+			WORD64 Values[2];
+			struct {
+				WORD64 ResolvedValue;
+				WORD64 ModuleBaseAddress;
+			};
+		};
+	}RuntimeUseOnly;
 }MOTH_EXEC_EXPORTTABLE, *PMOTH_EXEC_EXPORTTABLE;
 
+#define MOTH_EXECDT_ICFLAG_FUNCTIONS       0x01
+#define MOTH_EXECDT_ICFLAG_SOURCECODE      0x02
+#define MOTH_EXECDT_ICFLAG_BREAKPOINTS     0x04
+#define MOTH_EXECDT_ICFLAG_LINEINFORMATION 0x08
+#define MOTH_EXECDT_ICFLAG_COMMENTS        0x10
+
 typedef struct _MOTH_EXEC_DEBUGTABLE { // Executable Debug Table
-	WORD64 Reserved;
+	BYTE IsOnlyStub; // if non-zero, only this header exists and no useful data.
+	BYTE InformationContained; 
+
+	MOTH_EXEC_DIRECTORY EntriesDirectory;
+	DWORD32 EntryCount;
 }MOTH_EXEC_DEBUGTABLE, *PMOTH_EXEC_DEBUGTABLE;
 
 typedef struct _MOTH_EXEC_SECTION { // Executable Sections
+	struct {
+		WORD64 Previous;
+		WORD64 Me;
+		WORD64 Next;
+	}LinkedData;
 
+	CHAR SectionName[16];
+	WORD64 VirtualAddress;
+	WORD64 Size;
+	WORD64 BaseAddress;
+	BYTE Permissions;
 }MOTH_EXEC_SECTION, *PMOTH_EXEC_SECTION;
+
+typedef struct _MOTH_EXEC_CERTIFICATE { // Codesigning Certificate
+	WORD64 CertificateSerials[4];
+	WORD64 CertificateChecksum;
+
+	CHAR NameProgram[32];
+	CHAR NameAuthor[32];
+	WORD64 SignatureTime;
+
+	WORD64 SignatureProofVirtualAddress;
+	WORD64 VirtualSize;
+}MOTH_EXEC_CERTIFICATE, *PMOTH_EXEC_CERTIFICATE;
+
+typedef struct _MOTH_EXEC_DEBUGENTRY { // Debug Entries
+	BYTE EntryType;
+	WORD64 RelativeBase; // = Header->BaseAddress
+
+	WORD64 LinkedRelativeIpLow;
+	WORD64 LinkedRelativeIpHigh;
+
+	MOTH_EXEC_DIRECTORY DataDirectory;
+}MOTH_EXEC_DEBUGENTRY, *PMOTH_EXEC_DEBUGENTRY;
 
 // Internal User Process Structures
 
