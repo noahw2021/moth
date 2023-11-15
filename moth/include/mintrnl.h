@@ -43,6 +43,7 @@ typedef struct _MOTH_EXEC_HEADER* PMOTH_EXEC_HEADER;
 typedef struct _MOTH_EXEC_IMPORTTABLE* PMOTH_EXEC_IMPORTTABLE;
 typedef struct _MOTH_EXEC_EXPORTTABLE* PMOTH_EXEC_EXPORTTABLE;
 typedef struct _MOTH_EXEC_DEBUGTABLE* PMOTH_EXEC_DEBUGTABLE;
+typedef struct _MOTH_EXEC_SECTION* PMOTH_EXEC_SECTION;
 typedef struct _USER_PROCESS* PUSER_PROCESS;
 typedef struct _USER_SESSION* PUSER_SESSION;
 typedef struct _USER_THREAD* PUSER_THREAD;
@@ -108,11 +109,26 @@ typedef struct _SCHEDULE_SYSTEM_EVENT { // Scheduler Kernel Event
 // External Executable File Header Structures
 
 typedef struct _MOTH_EXEC_HEADER { // Executable Header
-	WORD64 Reserved;
+	WORD16 Magic;
+
+	PMOTH_EXEC_IMPORTTABLE ImportTable;
+	PMOTH_EXEC_EXPORTTABLE ExportTable;
+	PMOTH_EXEC_DEBUGTABLE  DebugInformation;
+	PMOTH_EXEC_SECTION     SectionTable;
+	WORD32 ImportTableEntries;
+	WORD32 ExportTableEntries;
+	WORD32 SectionTableEntries;
+
+	WORD64 BaseAddress;
+	WORD64 SizeOfCode;
+	WORD64 EntryPoint;
 }MOTH_EXEC_HEADER, *PMOTH_EXEC_HEADER;
 
 typedef struct _MOTH_EXEC_IMPORTTABLE { // Executable Import Table
-	WORD64 Reserved;
+	CHAR ModuleName[32];
+	CHAR ImportName[48];
+
+
 }MOTH_EXEC_IMPORTTABLE, *PMOTH_EXEC_IMPORTTABLE;
 
 typedef struct _MOTH_EXEC_EXPORTTABLE { // Executable Export Table
@@ -122,6 +138,10 @@ typedef struct _MOTH_EXEC_EXPORTTABLE { // Executable Export Table
 typedef struct _MOTH_EXEC_DEBUGTABLE { // Executable Debug Table
 	WORD64 Reserved;
 }MOTH_EXEC_DEBUGTABLE, *PMOTH_EXEC_DEBUGTABLE;
+
+typedef struct _MOTH_EXEC_SECTION { // Executable Sections
+
+}MOTH_EXEC_SECTION, *PMOTH_EXEC_SECTION;
 
 // Internal User Process Structures
 
