@@ -1,0 +1,57 @@
+# Moth Open Source License (MothOSL) - Version 1.0
+
+## Definitions
+
+    a. "Moth": Refers to the software, including any modifications or derivatives thereof, covered by this license.
+
+    b. "License": This document and the rights granted herein.
+
+    c. "Commercial Use": Any use of Moth for financial gain, including but not limited to, the sale, licensing, or distribution of Moth for commercial purposes.
+
+    d. "Publish": To make the source code of Moth, or modifications thereof, freely available to the public, such that anyone can reproduce, distribute, or modify the source code.
+
+    e. "Contributor": Any individual or legal entity that creates or contributes to Moth.
+
+## Grant of Rights
+
+    a. Subject to the terms and conditions of this License, each Contributor hereby grants to you a worldwide, royalty-free, non-exclusive license to use, reproduce, modify, display, perform, sublicense, and distribute Moth.
+
+    b. Commercial Use of Moth is not permitted without prior written permission from the Contributor. Such permission may be granted explicitly in writing.
+
+## Source Code Disclosure
+
+    a. If you distribute or publish Moth, or any modifications thereof, in any form, the source code must also be made available to the public.
+
+    b. For Commercial Use, the source code must be made available at the same time Moth is distributed or published, unless explicit written permission for delayed source code disclosure is obtained from the Contributor.
+
+## Distribution Requirements
+
+    a. Any distribution of Moth, whether in source code or binary form, must include a copy of this License.
+
+    b. Modifications made to Moth must be clearly marked as such, and the original copyright notice and this License must be preserved in all copies or substantial portions of Moth.
+
+## Attribution
+
+    a. Redistributions of Moth must retain all copyright notices and references to this License.
+
+    b. Contributors are encouraged, but not required, to include their names or other identifiers in the credits or acknowledgment section of any derivative work or distribution of Moth.
+
+## No Warranty
+
+    a. Moth is provided "as is," without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, and non-infringement. The entire risk as to the quality and performance of Moth is with you.
+
+## Limitation of Liability
+
+    a. In no event shall any Contributor be liable for any direct, indirect, incidental, special, exemplary, or consequential damages (including, but not limited to, procurement of substitute goods or services, loss of use, data, or profits, or business interruption) arising in any way out of the use of Moth, even if advised of the possibility of such damage.
+
+## Miscellaneous
+
+    a. This License constitutes the entire agreement between the parties concerning the subject matter hereof.
+
+    b. Any terms or conditions not explicitly stated in this License are subject to negotiation between the parties.
+
+    c. This License shall be governed by and construed in accordance with the laws of the United States, excluding its conflict of law provisions.
+
+    d. This License is binding upon and inures to the benefit of the parties and their respective successors and assigns.
+
+By using, modifying, or distributing Moth, you agree to be bound by the terms and conditions of this License. If you do not agree to these terms, you may not use, modify, or distribute Moth.
