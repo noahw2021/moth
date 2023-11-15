@@ -30,12 +30,16 @@ This file contains internal structures used by the
 moth Operating System.
 */
 
+// Required Inclusions
+#include "plasm2.h"
+
 // Predeclare Useful Structures
 typedef struct _SYSTEM_THEAD* PSYSTEM_THREAD;
 typedef struct _SYSTEM_DRIVER* PSYSTEM_DRIVER;
 typedef struct _MEMORY_CHUNK* PMEMORY_CHUNK;
 typedef struct _SYSTEM_CALL* PSYSTEM_CALL;
 typedef struct _SYSTEM_TIME* PSYSTEM_TIME;
+typedef struct _SYSTEM_HANDLE* PSYSTEM_HANDLE;
 typedef struct _SCHEDULE_CONTEXT* PSCHEDULE_CONTEXT;
 typedef struct _SCHEDULE_ENTITY* PSCHEDULE_ENTITY;
 typedef struct _SCHEDULE_SYSTEM_EVENT* PSCHEDULE_SYSTEM_EVENT;
@@ -51,6 +55,7 @@ typedef struct _USER_PROCESS* PUSER_PROCESS;
 typedef struct _USER_SESSION* PUSER_SESSION;
 typedef struct _USER_THREAD* PUSER_THREAD;
 typedef struct _USER_LIBRARY* PUSER_LIBRARY;
+typedef struct _USER_HANDLE* PUSER_HANDLE;
 typedef struct _USER_ISC_PROCESS* PUSER_ISC_PROCESS;
 typedef struct _USER_ISC_SESSION* PUSER_ISC_SESSION;
 typedef struct _USER_ISC_THREAD* PUSER_ISC_THREAD;
@@ -61,6 +66,7 @@ typedef struct _SYSTEM_INPUT_COMMAND* PSYSTEM_INPUT_COMMAND;
 typedef struct _SYSTEM_INPUT_CONTEXT* PSYSTEM_INPUT_CONTEXT;
 typedef struct _SYSTEM_DEVICE_EVENT* PSYSTEM_DEVICE_EVENT;
 typedef struct _SYSTEM_DEVICE* PSYSTEM_DEVICE;
+typedef struct _SYSTEM_DEVICE_CONTROL* PSYSTEM_DEVICE_CONTROL;
 typedef struct _SYSTEM_DEVICE_MANAGER* PSYSTEM_DEVICE_MANAGER;
 typedef struct _SYSTEM_MEMORY_HEAP* PSYSTEM_MEMORY_HEAP;
 typedef struct _SYSTEM_MEMORY_ALLOCATION* PSYSTEM_MEMORY_ALLOCATION;
@@ -69,40 +75,184 @@ typedef struct _SYSTEM_MEMORY_GARBAGELIST_ENTRY*
 typedef struct _SYSTEM_MEMORY_GARBAGE_MANAGER*
 	PSYSTEM_MEMORY_GARBAGE_MANAGER;
 
+// Driver Structures
+
+typedef struct _KDRIVER_IMPORT {
+	char ModuleName[16];
+	char ImportName[48];
+
+	WORD64 LoaderCallValue;
+	WORD64 ReferenceCount;
+	WORD64 IntUse_ResolvedAddr;
+}KDRIVER_IMPORT, *PKDRIVER_IMPORT;
+
+typedef struct _KDRIVER_EXPORT {
+	char ExportName[48];
+	WORD64 RelativeBase;
+
+	WORD64 ExportAddress;
+}KDRIVER_EXPORT, *PKDRIVER_EXPORT;	
+
+typedef struct _KDRIVER_EXEC_HDR {
+	WORD16 Magic;
+	CHAR ModuleName[16];
+
+	WORD64 ImportDirectoryVirtual;
+	WORD64 ImportDirectorySize;
+	WORD64 ExportDirectoryVirtual;
+	WORD64 ExportDirectorySize;
+
+	WORD64 MinimumRequiredHeap;
+	WORD64 EntryPoint;
+	WORD64 MinimumKernelVersion;
+	WORD64 CompileTime;
+
+	WORD64 Extension;
+	WORD64 Reserved[3];
+}KDRIVER_EXEC_HDR, *PKDRIVER_EXEC_HDR;
+
 // Internal Kernel Structures
 
 typedef struct _SYSTEM_THREAD { // System CPU Structure
-	WORD64 Reserved;
+	SYSTEM_TIME LastTick;
+
+	PSCHEDULE_CONTEXT ThisScheduler;
+	
+	PUSER_THREAD* UserThreads;
+	WORD32 UserThreadCount;
 }SYSTEM_THREAD, *PSYSTEM_THREAD;
 
 typedef struct _SYSTEM_DRIVER { // Kernel Driver (KM Process) Structure
-	WORD64 Reserved;
+	PKDRIVER_EXPORT ExportTable;
+	PKDRIVER_IMPORT ImportTable;
+	PKDRIVER_EXEC_HDR ExecHeader;
+
+	PSYSTEM_MEMORY_HEAP DriverHeap;
+	PSYSTEM_DEVICE LinkedDevice;
+
+	PSYSTEM_HANDLE MySystemHandle;
+	PUSER_HANDLE* MyDestinationUserHandles; // list of handles to the driver
+	WORD32 MyDestinationUserHandleCount;
+
+	PSYSTEM_DEVICE_CONTROL ControlEvents;
+	WORD32 ControlEventCount;
 }SYSTEM_DRIVER, *PSYSTEM_DRIVER;
 
 typedef struct _SYSTEM_INFO { // System Information Structure
-	WORD64 Reserved;
+	PSYSTEM_THREAD PrimaryCpu;
+	PSYSTEM_THREAD* Cpus;
+	WORD16 CpuCount;
+
+	PSYSTEM_DRIVER* Drivers;
+	DWORD32 DriverCount;
+
+	PMEMORY_CHUNK* MemoryMaps;
+	PWORD64 RefMemoryMapSizes;
+	WORD64 MemoryMapCount;
+
+	PSYSTEM_CALL* PendingSystemCalls;
+	WORD64 PendingSysCallCount;
+
+	PSYSTEM_TIME CurrentSystemTime;
+	PSCHEDULE_CONTEXT PrimarySystemScheduler;
+	PSCHEDULE_CONTEXT* SchedulerByCpu;
+	WORD32 IndividualSchedulerCount;
+	PUSER_SESSION UserSessions;
+	WORD16 UserSessionCount;
+
+	PSYSTEM_INPUT_CONTEXT InputCtx;
+	PSYSTEM_VIDEO_CONTEXT VideoCtx;
+	PSYSTEM_DEVICE_MANAGER Devices;
+	PSYSTEM_MEMORY_HEAP KernelHeaps;
 }SYSTEM_INFO, *PSYSTEM_INFO;
 
 typedef struct _MEMORY_CHUNK { // Memory Chunk Structure
+	WORD64 BasePhysicalAddress;
+	WORD64 ChunkSize;
+
+	union {
+		WORD64 FlagsRaw;
+		struct {
+			WORD64 InUse : 1;
+
+			word64 Reserved : 63;
+		};
+	}Flags;
+
 	WORD64 Reserved;
 }MEMORY_CHUNK, *PMEMORY_CHUNK;
 
 typedef struct _SYSTEM_CALL { // System Call Information
-	WORD64 Reserved;
+	WORD64 SystemCallId;
+	WORD64 Arguments[4];
+	WORD64 ReturnPtr;
+
+	PSYSTEM_HANDLE Initiator; // likely a user-application
+	WORD64 ReturnIp;
 }SYSTEM_CALL, *PSYSTEM_CALL;
 
 typedef struct _SYSTEM_TIME { // System Time
-	WORD64 Reserved;
+	WORD64 SecondsSince2000;
+	WORD64 MsSince2000;
+	WORD64 NsSince2023;
+	WORD64 NsSinceBoot;
 }SYSTEM_TIME, *PSYSTEM_TIME; 
+
+#define SYSHND_USERPROCESS 0x00
+#define SYSHND_USERSESSION 0x01
+#define SYSHND_USERLIBRARY 0x02
+#define SYSHND_USERTHREAD  0x03
+#define SYSHND_USERMOTHAPI 0x04
+#define SYSHND_KERNDRIVER  0x05
+#define SYSHND_KERNFILE    0x06
+#define SYSHND_KERNHEAP    0x07
+#define SYSHND_KERNGCLIST  0x08
+
+#define SYSHND_OWNER_SYSTEM 0x13220000ABCD037F
+
+typedef struct _SYSTEM_HANDLE { // Kernel-mode handle
+	BYTE HandleType;
+	WORD64 RelevantInformation;
+	WORD64 MothHandleType; // api level handle type
+	union {
+		WORD64 Value;
+		PSYSTEM_HANDLE Handle;
+	}HandleOwner;
+
+	union {
+		PUSER_PROCESS Process;
+		PUSER_SESSION Sesison;
+		PUSER_LIBRARY Library;
+		PUSER_THREAD Thread;
+		VOID* MothApi;
+		PSYSTEM_DRIVER KDriver;
+		PSYSTEM_MEMORY_HEAP KHeap;
+		PSYSTEM_MEMORY_GARBAGE_MANAGER GcList;
+	}Structure;
+}SYSTEM_HANDLE, *PSYSTEM_HANDLE;
 
 // Internal Kernel Scheduler Structures
 
 typedef struct _SCHEDULE_CONTEXT { // Scheduler Context
-	WORD64 Reserved;
+	PSYSTEM_THREAD LocalCpu;
+
+	PSCHEDULE_ENTITY Entities;
+	WORD32 EntityCount;
+
+	PSCHEDULE_ENTITY* HighestPriorities;
+	WORD32 HighPriorityCount;
 }SCHEDULE_CONTEXT, *PSCHEDULE_CONTEXT;
 
 typedef struct _SCHEDULE_ENTITY { // Scheduler Entity
-	WORD64 Reserved;
+	PL2_CONTEXT EntityContext;
+	DWORD32 EntityPriority;
+	SYSTEM_TIME LastExecution;
+	BYTE IsDisabled;
+	BYTE IsSleeping;
+	BYTE IsSpecialEvent;
+
+	SYSTEM_TIME AwakeTime;
+	PSCHEDULE_SYSTEM_EVENT SpecialEvent;
 }SCHEDULE_ENTITY, *PSCHEDULE_ENTITY;
 
 typedef struct _SCHEDULE_SYSTEM_EVENT { // Scheduler Kernel Event
@@ -265,6 +415,10 @@ typedef struct _USER_ISC_LIBRARY { // Inter-State Communication : Library
 	WORD64 Reserved;
 }USER_ISC_LIBRARY, *PUSER_ISC_LIBRARY;
 
+typedef struct _USER_HANDLE { // User-mode handle
+
+}USER_HANDLE, *PUSER_HANDLE;
+
 // Kernel API Information
 
 typedef struct _SYSTEM_VIDEO_COMMAND { // Kernel Video Manager : Command
@@ -294,6 +448,16 @@ typedef struct _SYSTEM_DEVICE { // Kernel Device Manager : Device
 typedef struct _SYSTEM_DEVICE_MANAGER { // Kernel Device Manager : Device Manager
 	WORD64 Reserved;
 }SYSTEM_DEVICE_MANAGER, *PSYSTEM_DEVICE_MANAGER;
+
+typedef struct _SYSTEM_DEVICE_CONTROL { // Kernel-User Mode ISC
+	BYTE Originator; // 0 = Driver, 1 = Program
+	
+	PSYSTEM_HANDLE OriginSystemHandle;
+	PUSER_HANDLE TargetLocalHandle;
+
+	WORD64 InformationPacket[8];
+	WORD64 Command;
+}
 
 // Memory Information
 
