@@ -145,7 +145,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\ccel.h" />
     <ClInclude Include="include\mintrnl.h" />
+    <ClInclude Include="include\mot.h" />
+    <ClInclude Include="include\plasm2.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

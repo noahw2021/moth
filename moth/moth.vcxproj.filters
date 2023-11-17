@@ -26,5 +26,14 @@
     <ClInclude Include="include\mintrnl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\plasm2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mot.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ccel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

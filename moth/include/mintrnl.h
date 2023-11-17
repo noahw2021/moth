@@ -12,18 +12,10 @@ https://github.com/noahw2021/moth/blob/master/LICENSE
 
 Changes:
 11/15/23 : File created - nw
+11/16/23 : Continue work - nw
 */
 
-#ifndef _MOTHTYPES
-#define _MOTHTYPES
-
-typedef unsigned __int64 WORD64, *PWORD64;
-typedef unsigned __int32 WORD32, *PWORD32;
-typedef unsigned __int16 WORD16, *PWORD16;
-typedef unsigned __int8  CHAR, BYTE, *PCHAR, 
-	*PBYTE, *PSTR;
-
-#endif
+#include "mot.h"
 
 /*
 This file contains internal structures used by the
@@ -74,6 +66,8 @@ typedef struct _SYSTEM_MEMORY_GARBAGELIST_ENTRY*
 	PSYSTEM_MEMORY_GARBAGELIST_ENTRY;
 typedef struct _SYSTEM_MEMORY_GARBAGE_MANAGER*
 	PSYSTEM_MEMORY_GARBAGE_MANAGER;
+typedef struct _USER_EXCEPTION_HANDLER_CALL*
+	PUSER_EXCEPTION_HANDLER_CALL;
 
 // Driver Structures
 
@@ -144,7 +138,7 @@ typedef struct _SYSTEM_INFO { // System Information Structure
 	WORD16 CpuCount;
 
 	PSYSTEM_DRIVER* Drivers;
-	DWORD32 DriverCount;
+	WORD32 DriverCount;
 
 	PMEMORY_CHUNK* MemoryMaps;
 	PWORD64 RefMemoryMapSizes;
@@ -166,6 +160,17 @@ typedef struct _SYSTEM_INFO { // System Information Structure
 	PSYSTEM_MEMORY_HEAP KernelHeaps;
 }SYSTEM_INFO, *PSYSTEM_INFO;
 
+typedef struct _STRING_PTR {
+	PWSTR Buffer;
+	WORD32 StringLengthChars;
+	WORD32 MaxBufferLength;
+}STRING_PTR;
+
+typedef struct _STRING_PREALLOC {
+	WCHAR Buffer[512];
+	WORD32 StringLengthChars;
+}STRING_PREALLOC;
+
 typedef struct _MEMORY_CHUNK { // Memory Chunk Structure
 	WORD64 BasePhysicalAddress;
 	WORD64 ChunkSize;
@@ -175,7 +180,7 @@ typedef struct _MEMORY_CHUNK { // Memory Chunk Structure
 		struct {
 			WORD64 InUse : 1;
 
-			word64 Reserved : 63;
+			WORD64 Reserved : 63;
 		};
 	}Flags;
 
@@ -214,6 +219,7 @@ typedef struct _SYSTEM_HANDLE { // Kernel-mode handle
 	BYTE HandleType;
 	WORD64 RelevantInformation;
 	WORD64 MothHandleType; // api level handle type
+	STRING_PREALLOC HandleName;
 	union {
 		WORD64 Value;
 		PSYSTEM_HANDLE Handle;
@@ -224,7 +230,7 @@ typedef struct _SYSTEM_HANDLE { // Kernel-mode handle
 		PUSER_SESSION Sesison;
 		PUSER_LIBRARY Library;
 		PUSER_THREAD Thread;
-		VOID* MothApi;
+		void* MothApi;
 		PSYSTEM_DRIVER KDriver;
 		PSYSTEM_MEMORY_HEAP KHeap;
 		PSYSTEM_MEMORY_GARBAGE_MANAGER GcList;
@@ -235,6 +241,7 @@ typedef struct _SYSTEM_HANDLE { // Kernel-mode handle
 
 typedef struct _SCHEDULE_CONTEXT { // Scheduler Context
 	PSYSTEM_THREAD LocalCpu;
+	PSYSTEM_HANDLE SystemHandle;
 
 	PSCHEDULE_ENTITY Entities;
 	WORD32 EntityCount;
@@ -245,7 +252,8 @@ typedef struct _SCHEDULE_CONTEXT { // Scheduler Context
 
 typedef struct _SCHEDULE_ENTITY { // Scheduler Entity
 	PL2_CONTEXT EntityContext;
-	DWORD32 EntityPriority;
+	PSYSTEM_HANDLE SystemHandle;
+	WORD32 EntityPriority;
 	SYSTEM_TIME LastExecution;
 	BYTE IsDisabled;
 	BYTE IsSleeping;
@@ -253,6 +261,7 @@ typedef struct _SCHEDULE_ENTITY { // Scheduler Entity
 
 	SYSTEM_TIME AwakeTime;
 	PSCHEDULE_SYSTEM_EVENT SpecialEvent;
+	PSYSTEM_HANDLE UserThread;
 }SCHEDULE_ENTITY, *PSCHEDULE_ENTITY;
 
 typedef struct _SCHEDULE_SYSTEM_EVENT { // Scheduler Kernel Event
@@ -342,7 +351,7 @@ typedef struct _MOTH_EXEC_DEBUGTABLE { // Executable Debug Table
 	BYTE InformationContained; 
 
 	MOTH_EXEC_DIRECTORY EntriesDirectory;
-	DWORD32 EntryCount;
+	WORD32 EntryCount;
 }MOTH_EXEC_DEBUGTABLE, *PMOTH_EXEC_DEBUGTABLE;
 
 typedef struct _MOTH_EXEC_SECTION { // Executable Sections
@@ -383,58 +392,301 @@ typedef struct _MOTH_EXEC_DEBUGENTRY { // Debug Entries
 
 // Internal User Process Structures
 
+typedef struct _USER_EXCEPTION_HANDLER {
+	WORD64 HandlerOrder;
+	PSYSTEM_HANDLE SystemHandle;
+
+	PUSER_PROCESS ValidProcess;
+	PUSER_THREAD ValidThread;
+	PUSER_LIBRARY ValidLibrary;
+
+	WORD64 FunctionAddress;
+}USER_EXCEPTION_HANDLER, *PUSER_EXCEPTION_HANDLER;
+
+typedef struct _USER_EXCEPTION_HANDLER_CALL {
+	PL2_CONTEXT Context;
+	WORD64 HandlerSkips;
+
+	WORD64 ExceptionCode;
+	WORD64 ExceptionArgument[4];
+	WORD64 TranslatedErrorMessage;
+	WORD64 ExceptionCallReturnAddress;
+}USER_EXCEPTION_HANDLER_CALL,
+*PUSER_EXCEPTION_HANDLER_CALL;
+
 typedef struct _USER_PROCESS { // User-mode Process Information
-	WORD64 Reserved;
+	WORD64 ProcessId;
+	PUSER_SESSION SessionOwner;
+	CHAR ProcessName[64];
+	CHAR CommandLine[512];
+	PSYSTEM_HANDLE SystemHandle;
+	PUSER_PROCESS ParentProcess;
+	PUSER_PROCESS* ChildProcesses;
+	WORD32 ChildProcessCount;
+	WORD32 ProcessReturnCode;
+	
+	PUSER_HANDLE HandlesCreated;
+	WORD32 HandleCount;
+	PUSER_HANDLE* HandlesToMe;
+	WORD32 HandlesToMeCount;
+
+	union {
+		WORD64 RawFlags;
+		struct {
+			WORD64 IsProcessSuspended : 1;
+			WORD64 IsProcessBeingDebugged : 1;
+			WORD64 IsProcessContainSymbols : 1;
+			WORD64 IsProcessSigned : 1;
+		};
+	}Flags;
+
+	PUSER_THREAD MainThread;
+	PUSER_THREAD Threads;
+	WORD32 ThreadCount;
+	PUSER_LIBRARY Libraries;
+	WORD32 LibaryCount;
+
+	PMOTH_EXEC_HEADER ExecHeader;
+	PMOTH_EXEC_IMPORTTABLE ImportTable;
+	PMOTH_EXEC_EXPORTTABLE ExportTable;
+	PMOTH_EXEC_DEBUGTABLE DebugTable;
+	PMOTH_EXEC_CERTIFICATE Certificate;
+	PMOTH_EXEC_SECTION SectionList;
+	PMOTH_EXEC_SECTION* SectionsResolved;
+	WORD32 SectionCount;
+
+	PSYSTEM_MEMORY_HEAP PrimaryProcessHeap;
+	PSYSTEM_MEMORY_ALLOCATION ProcessBase;
+	PSYSTEM_MEMORY_HEAP* ProcessHeaps;
+	WORD32 ProcessHeapCount;
+
+	PUSER_ISC_PROCESS OriginatedProcessISC;
+	PUSER_ISC_LIBRARY HostedLibraryISC;
+	PUSER_ISC_THREAD  HostedThreadISC;
+	WORD32 OriginatedProcessCount;
+	WORD32 HostedLibraryCount;
+	WORD32 HostedThreadCount;
+
+	WORD32 ProcessExceptionHandlers;
+	WORD64 LastErrorCode;
+	PUSER_EXCEPTION_HANDLER ProcessExceptionHandlers;
+	PUSER_EXCEPTION_HANDLER** ThreadExceptionHandlersMatrix;
+	WORD32* ThreadExceptionHandlersMatrixPerThreadHandlerCount;
+	PUSER_EXCEPTION_HANDLER* ThreadExceptionHandlersSerialized;
+	WORD32 ThreadExceptionHandlersSerializedTotalCount;
 }USER_PROCESS, *PUSER_PROCESS;
 
 typedef struct _USER_SESSION { // User-mode Session Information
-	WORD64 Reserved;
+	WORD64 SessionId;
+	STRING_PTR SessionName;
+	PSYSTEM_HANDLE SystemHandle;
+
+	PUSER_PROCESS Processes;
+	WORD32 ProcessCount;
+	PUSER_THREAD* Threads;
+	WORD32 ThreadCount;
+	PUSER_HANDLE* Handles;
+	WORD32 HandleCount;
+
+	PSYSTEM_MEMORY_HEAP* SessionHeaps;
+	WORD32 SessionHeapCount;
+	WORD64 EstimatedTotalUsage;
 }USER_SESSION, *PUSER_SESSION;
 
 typedef struct _USER_THREAD { // User-mode Thread Information
-	WORD64 Reserved;
+	WORD64 ThreadId;
+	STRING_PTR ThreadName;
+	PSYSTEM_HANDLE SystemHandle;
+	PSCHEDULE_ENTITY ScheduleEntity;
+	PUSER_PROCESS ProcessOwner;
+	WORD32 ThreadState;
+	WORD32 ThreadReturnCode;
+
+	PUSER_EXCEPTION_HANDLER SystemHandler;
+	PUSER_EXCEPTION_HANDLER FirstHandler;
+	PUSER_EXCEPTION_HANDLER* ExceptionHandlers;
+	WORD32 ExceptionHandlerCount;
+
+	BOOLEAN IsSuspended;
+	PSYSTEM_MEMORY_HEAP PrimaryThreadHeap;
+	SYSTEM_TIME LastThreadCall;
 }USER_THREAD, *PUSER_THREAD;
 
 typedef struct _USER_LIBRARY { // User-mode Handle Information
-	WORD64 Reserved;
+	WORD64 LibraryId;
+	PSYSTEM_HANDLE SystemHandle;
+	STRING_PTR LibraryName;
+	CHAR LibraryShortName[16];
+	PUSER_PROCESS ParentProcess;
+
+	PUSER_THREAD MainThread;
+	PUSER_THREAD* CreatedThreads;
+	WORD32 CreatedThreadCount;
+
+	PMOTH_EXEC_EXPORTTABLE ExportTable;
+	PMOTH_EXEC_IMPORTTABLE ImportTable;
 }USER_LIBRARY, *PUSER_LIBRARY;
 
 typedef struct _USER_ISC_PROCESS { // Inter-State Communication : Process
-	WORD64 Reserved;
+	WORD64 IscId;
+	PSYSTEM_HANDLE SystemHandle;
+	PUSER_PROCESS Creator;
+	PUSER_PROCESS Target;
+
+	WORD64 Message;
+	WORD64 Arguments[4];
 }USER_ISC_PROCESS, *PUSER_ISC_PROCESS;
 
 typedef struct _USER_ISC_SESSION { // Inter-State Communication : Session
-	WORD64 Reserved;
+	WORD64 IscId;
+	PSYSTEM_HANDLE SystemHandle;
+	PUSER_SESSION Creator;
+	PUSER_SESSION Target;
+
+	WORD64 Message;
+	WORD64 Arguments[4];
 }USER_ISC_SESSION, *PUSER_ISC_SESSION;
 
 typedef struct _USER_ISC_THREAD { // Inter-State Communication : Thread
-	WORD64 Reserved;
+	WORD64 IscId;
+	PSYSTEM_HANDLE SystemHandle;
+	PUSER_THREAD Creator;
+	PUSER_THREAD Target;
+
+	WORD64 Message;
+	WORD64 Arguments[4];
 }USER_ISC_THREAD, *PUSER_ISC_THREAD;
 
 typedef struct _USER_ISC_LIBRARY { // Inter-State Communication : Library
-	WORD64 Reserved;
+	WORD64 IscId;
+	PSYSTEM_HANDLE SystemHandle;
+	PUSER_LIBRARY Creator;
+	PUSER_LIBRARY Target;
+
+	WORD64 Message;
+	WORD64 Arguments[4];
 }USER_ISC_LIBRARY, *PUSER_ISC_LIBRARY;
 
 typedef struct _USER_HANDLE { // User-mode handle
+	WORD64 HandleId;
+	STRING_PTR HandleName;
+	SYSTEM_HANDLE HandleValue;
+	PSYSTEM_HANDLE SystemHandle;
+	WORD32 OwnerType;
+	struct {
+		PUSER_LIBRARY Library;
+		PUSER_PROCESS Process;
+		PUSER_THREAD Thread;
+		PUSER_SESSION Session;
+	}Owners;
 
+	WORD32 HandleType;
 }USER_HANDLE, *PUSER_HANDLE;
 
 // Kernel API Information
 
+typedef struct _SYSTEM_VIDEO_FONT {
+
+}SYSTEM_VIDEO_FONT, *PSYSTEM_VIDEO_FONT;
+
 typedef struct _SYSTEM_VIDEO_COMMAND { // Kernel Video Manager : Command
-	WORD64 Reserved;
+	WORD16 VideoCommandType;
+	WORD64 FrameNumber;
+
+	union {
+		WORD64 InternalArguments[4];
+
+		struct {
+			WORD32 X1, Y1, X2, Y2;
+			WORD32 Color;
+		}Line;
+
+		struct {
+			WORD32 X, Y, W, H;
+			WORD32 Color;
+		}Rectangle;
+
+		struct {
+			WORD32 X, Y, W, H;
+			WORD32 Color;
+		}Outline;
+
+		struct {
+			WORD32 X, Y;
+			STRING_PTR String;
+			PSYSTEM_VIDEO_FONT Font;
+		}Text;
+
+		struct {
+			WORD32 X, Y, W, H;
+
+			WORD32 ColorTopLeft;
+			WORD32 ColorTopRight;
+			WORD32 ColorBottomLeft;
+			WORD32 ColorBottomRight;
+		}Gradient;
+	}SpecificArguments;
 }SYSTEM_VIDEO_COMMAND, *PSYSTEM_VIDEO_COMMAND;
 
 typedef struct _SYSTEM_VIDEO_CONTEXT { // Kernel Video Manager : Context
-	WORD64 Reserved;
+	WORD64 FrameCount;
+	WORD32 TargetFramesPerSecond;
+
+	PSYSTEM_VIDEO_COMMAND VideoCommandsForFrame;
+	WORD32 VideoCommandsCount;
+	WORD32 VideoCommandsMaxCount; 
 }SYSTEM_VIDEO_CONTEXT, *PSYSTEM_VIDEO_CONTEXT;
 
+#define SYSINPUT_MEARG_MOUSEPOSX  0x01
+#define SYSINPUT_MEARG_MOUSEPOSY  0x02
+#define SYSINPUT_MEARG_BUTTONUP   0x04
+#define SYSINPUT_MEARG_BUTTONDOWN 0x08
+#define SYSINPUT_MEARG_SCROLL     0x10
+#define SYSINPUT_MEARG_RESPONSE   0x20
+
 typedef struct _SYSTEM_INPUT_COMMAND { // Kernel Input Manager : Command
-	WORD64 Reserved;
+	WORD64 InputCount;
+	WORD32 InputType;
+	WORD32 DeviceId;
+	PSYSTEM_DEVICE RootDevice;
+	PSYSTEM_DEVICE_EVENT CausationEvent;
+
+	union {
+		WORD64 InternalArguments[8];
+
+		struct {
+			WORD16 ThisKey;
+			WORD32 EventType;
+			WORD16 EventArgument2;
+
+			WORD64 CurrentKeyMap[4];
+		}KeyboardEvent;
+
+		struct {
+			WORD16 EventParameters;
+
+			WORD16 MouseX, MouseY;
+			WORD16 ScrollPosition;
+			WORD16 MouseButtons;
+			WORD16 ScrollDelta;
+		}MouseEvent;
+
+		struct {
+			WORD64 EventId;
+
+			WORD64 EventArguments[7];
+		}GenericEvent;
+	}SpecificInputs;
 }SYSTEM_INPUT_COMMAND, *PSYSTEM_INPUT_COMMAND;
 
 typedef struct _SYSTEM_INPUT_CONTEXT { // Kernel Input Manager : Context
-	WORD64 Reserved;
+	WORD64 CommandCount;
+	WORD64 ExecutedCommandCount;
+
+	PSYSTEM_INPUT_COMMAND PendingCommands;
+	WORD64 PendingCommandCount;
+	WORD64 PendingCommandMax;
+
 }SYSTEM_INPUT_CONTEXT, *PSYSTEM_INPUT_CONTEXT;
 
 typedef struct _SYSTEM_DEVICE_EVENT { // Kernel Device Manager : Device Event
@@ -451,13 +703,13 @@ typedef struct _SYSTEM_DEVICE_MANAGER { // Kernel Device Manager : Device Manage
 
 typedef struct _SYSTEM_DEVICE_CONTROL { // Kernel-User Mode ISC
 	BYTE Originator; // 0 = Driver, 1 = Program
-	
+
 	PSYSTEM_HANDLE OriginSystemHandle;
 	PUSER_HANDLE TargetLocalHandle;
 
 	WORD64 InformationPacket[8];
 	WORD64 Command;
-}
+}SYSTEM_DEVICE_CONTROL, *PSYSTEM_DEVICE_CONTROL;
 
 // Memory Information
 

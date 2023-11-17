@@ -13,6 +13,13 @@ Changes:
 11/15/23 : File created - nw
 */
 
+#include "include/mot.h"
+#if (MOTH_PLATFORM == MOTH_PLATFORM_AMD64CCEL)
+
+#endif
+
 int main(void) {
-	return 0;
+#if (MOTH_PLATFORM == MOTH_PLATFORM_AMD64CCEL)
+	
+#endif
 }

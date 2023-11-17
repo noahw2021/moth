@@ -12,18 +12,10 @@ https://github.com/noahw2021/moth/blob/master/LICENSE
 
 Changes:
 11/15/23 : File created - nw
+11/16/23 : Update types - nw
 */
 
-#ifndef _MOTHTYPES
-#define _MOTHTYPES
-
-typedef unsigned __int64 WORD64, *PWORD64;
-typedef unsigned __int32 WORD32, *PWORD32;
-typedef unsigned __int16 WORD16, *PWORD16;
-typedef unsigned __int8  CHAR, BYTE, *PCHAR, 
-	*PBYTE, *PSTR;
-
-#endif
+#include "mot.h"
 
 /*
 This file contains PLASM2-related structures
