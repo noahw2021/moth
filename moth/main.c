@@ -3,7 +3,7 @@ main.c
 moth
 15 November 2023
 
-The Moth Operating System
+The Moth Operating Systemsup
 (c) Noah Wooten 2023, All Rights Reserved
 
 This file is licensed under the MothOSL.
