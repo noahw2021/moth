@@ -23,7 +23,7 @@ typedef unsigned __int16 WORD16, * PWORD16;
 typedef unsigned __int8  CHAR, BYTE, * PCHAR,
 * PBYTE, * PSTR, BOOLEAN, * PBOOLEAN;
 typedef void* PVOID;
-typedef wchar_t WCHAR, * PWSTR;
+typedef unsigned short WCHAR, * PWSTR;
 
 #define VOID void
 

@@ -14,5 +14,9 @@ Changes:
 11/17/23 : File created - nw
 */
 
+#if (MOTH_PLATFORM == MOTH_PLATFORM_AMD64CCEL)
 #define CCEL_IMPORTS_MODE
 #include "../../Pccel/Pccel/exports.h"
+#else
+#error "Invalid Target: Do not include AMD64CCEL Files!"
+#endif

@@ -15,11 +15,15 @@ Changes:
 
 #include "include/mot.h"
 #if (MOTH_PLATFORM == MOTH_PLATFORM_AMD64CCEL)
-
+#include "include/ccel.h"
+#ifdef _DEBUG
+#else
+#endif
 #endif
 
 int main(void) {
 #if (MOTH_PLATFORM == MOTH_PLATFORM_AMD64CCEL)
-	
+	CcInit();
+	*(int*)(0x47981) = 69;
 #endif
 }
